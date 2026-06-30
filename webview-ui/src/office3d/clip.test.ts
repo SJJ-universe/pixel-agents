@@ -17,9 +17,9 @@ describe('selectClip (3D clip selection)', () => {
     expect(selectClip(CharacterState.WALK, 'Edit')).toBe('walk');
   });
 
-  it('IDLE outside the lounge → walk (the static idle pose is never shown)', () => {
-    expect(selectClip(CharacterState.IDLE, null)).toBe('walk');
-    expect(selectClip(CharacterState.IDLE, null, { inLounge: false })).toBe('walk');
+  it('IDLE outside the lounge → idle (neutral standing pose, not walk-in-place)', () => {
+    expect(selectClip(CharacterState.IDLE, null)).toBe('idle');
+    expect(selectClip(CharacterState.IDLE, null, { inLounge: false })).toBe('idle');
   });
 
   it('IDLE inside the lounge → gender neutral pool', () => {

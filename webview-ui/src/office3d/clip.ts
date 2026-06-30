@@ -78,8 +78,13 @@ export function selectClip(state: string, tool: string | null, opts: ClipOpts = 
     return neutral(gender, variant);
   }
 
-  // IDLE (standing). Neutral motions only inside the lounge; everywhere else the
-  // agent keeps walking — the static idle pose is intentionally never shown.
+  // IDLE = stationary between wander moves (the rig plays 'walk' only in the WALK
+  // state, i.e. while actually travelling). Inside the lounge, cycle the seated
+  // neutral pool; everywhere else stand in the neutral idle pose. (Previously this
+  // returned 'walk', so a paused agent walked in place — and right after a work
+  // turn it did so ON its chair for up to WANDER_PAUSE_MAX seconds, reading as
+  // "stuck walking on the chair". User: idle agents should wander freely and rest
+  // in a neutral pose, not march in place.)
   if (inLounge) return neutral(gender, variant);
-  return 'walk';
+  return 'idle';
 }

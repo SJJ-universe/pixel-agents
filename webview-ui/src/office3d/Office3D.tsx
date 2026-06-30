@@ -10,6 +10,8 @@ import { MAX_DELTA_TIME_SEC } from '../constants.js';
 import type { SubagentCharacter } from '../hooks/useExtensionMessages.js';
 import type { OfficeState } from '../office/engine/officeState.js';
 import { Direction, type ToolActivity } from '../office/types.js';
+import { isGemmaDemo } from '../runtime.js';
+import { ChatPanel } from './ChatPanel.js';
 import { FORWARD_DIR_TO_DIRECTION, SCENE_BG_COLOR } from './constants3d.js';
 import type { AssetManifest } from './manifest.js';
 import { assets3dBase, fixedCharForRole, fixedRoleFor, loadManifest } from './manifest.js';
@@ -252,6 +254,10 @@ export function Office3D({
           +
         </button>
       </div>
+
+      {/* 총괄 chat — only in the Gemma-demo / dev build, where the runner backend
+          (POST /command + SSE) exists to drive the agents from natural language. */}
+      {(isGemmaDemo || import.meta.env.DEV) && <ChatPanel />}
 
       {/* Camera-mode toggle: top-down diorama vs first-person walkthrough. */}
       <div

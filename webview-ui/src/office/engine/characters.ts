@@ -120,7 +120,10 @@ export function updateCharacter(
         ch.state = CharacterState.IDLE;
         ch.frame = 0;
         ch.frameTimer = 0;
-        ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
+        // Leave the desk/chair on the NEXT tick (wanderTimer 0), not after the
+        // usual 2–20s pause — otherwise the agent lingers standing on its chair
+        // right after a turn. Later idle pauses use the normal wander cadence.
+        ch.wanderTimer = 0;
         ch.wanderCount = 0;
         ch.wanderLimit = randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX);
       }

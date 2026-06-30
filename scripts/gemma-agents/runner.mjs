@@ -52,6 +52,14 @@ const STATIC_DIR = process.env.STATIC_DIR
   : path.resolve(HERE, '../../dist/webview');
 const SERVE_STATIC = fs.existsSync(path.join(STATIC_DIR, 'index.html'));
 
+// ── live task state (driven by the 총괄 chat at /command) ─────────────────────
+// Until the user gives a task the agents just idle/wander; a command assigns work
+// and every agent's activity becomes contextual to it. Replaces the old "random
+// activity" behaviour so the chat actually controls what the team does.
+let currentTask = null; // string | null — the natural-language task from chat
+let assignments = {}; // { [roleName]: one-line assignment }
+let planning = false; // true while 총괄 is breaking down a command (debounce)
+
 if (!KEY) {
   console.warn('[gemma] OPENROUTER_API_KEY not set — using canned activities (no real Gemma).');
   console.warn('[gemma] Set it: OPENROUTER_API_KEY=sk-or-... node scripts/gemma-agents/runner.mjs');
@@ -222,9 +230,42 @@ function serveStatic(pathname, res) {
 
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
+  // CORS preflight (dev: webview :5173 POSTs JSON to runner :7777, cross-origin).
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    });
+    return res.end();
+  }
   if (pathname === '/health') {
     res.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
     return res.end('ok');
+  }
+  // Natural-language task from the 총괄 chat → plan + assign.
+  if (pathname === '/command' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => {
+      body += c;
+      if (body.length > 4000) req.destroy(); // cap untrusted payload
+    });
+    req.on('end', () => {
+      let text = '';
+      try {
+        text = JSON.parse(body).text || '';
+      } catch {
+        /* ignore malformed body */
+      }
+      void handleCommand(text).then((result) => {
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(JSON.stringify(result));
+      });
+    });
+    return;
   }
   if (pathname !== '/events') {
     if (SERVE_STATIC) return serveStatic(pathname, res);
@@ -259,8 +300,12 @@ server.listen(PORT, HOST, () => {
 const SYSTEM =
   '너는 바쁜 개발 사무실의 AI 소프트웨어 엔지니어다. 지금 무엇을 하는지 한국어로 아주 짧게(최대 6어절) "~하는 중" 형태의 현재 진행형 한 구절로만 답해라. 예: "로그인 폼 고치는 중", "API 문서 읽는 중". 따옴표·마침표·다른 말은 절대 붙이지 마라.';
 
-async function gemmaActivity(id, role) {
+async function gemmaActivity(id, role, task, assignment) {
   if (!KEY) return pick(role.fallback);
+  // With a task: the label is contextual to it. Without: generic role activity.
+  const userMsg = task
+    ? `팀이 받은 작업: "${task}". 너는 "${role.name}" 담당이고 네가 맡은 부분은 "${assignment || role.desc}". 지금 그 작업을 위해 무엇을 하고 있나?`
+    : `너는 소프트웨어 팀의 "${role.name}" 담당이다. ${role.desc}. 지금 무엇을 하고 있나?`;
   try {
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -271,10 +316,7 @@ async function gemmaActivity(id, role) {
         temperature: 1.0,
         messages: [
           { role: 'system', content: SYSTEM },
-          {
-            role: 'user',
-            content: `너는 소프트웨어 팀의 "${role.name}" 담당이다. ${role.desc}. 지금 무엇을 하고 있나?`,
-          },
+          { role: 'user', content: userMsg },
         ],
       }),
     });
@@ -308,6 +350,73 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let running = true;
 let toolSeq = 0;
 
+// 총괄 breaks a natural-language task into one-line assignments per role. Returns
+// { reply, assignments }. Robust to non-JSON output (falls back to "everyone on it").
+async function planTask(text) {
+  if (!KEY) return { reply: `"${text}" 작업을 팀에 분배했습니다.`, assignments: {} };
+  const roleList = ROLES.map((r) => r.name).join(', ');
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 400,
+        temperature: 0.4,
+        messages: [
+          {
+            role: 'system',
+            content: `너는 개발팀 "총괄"이다. 사용자의 작업 지시를 받아 팀원에게 한 줄씩 업무를 배분한다. 오직 JSON만 출력하라(다른 텍스트·코드펜스 금지): {"reply":"사용자에게 보내는 한국어 한 문장 확인","assignments":{"역할명":"한 줄 업무"}}. 역할명은 다음 중에서만 고른다: ${roleList}.`,
+          },
+          { role: 'user', content: text },
+        ],
+      }),
+    });
+    if (!r.ok) throw new Error(`OpenRouter ${r.status}`);
+    let content = ((await r.json()).choices?.[0]?.message?.content ?? '').replace(
+      /```json|```/g,
+      '',
+    );
+    const parsed = JSON.parse(content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1));
+    return {
+      reply: String(parsed.reply || `"${text}" 진행하겠습니다.`),
+      assignments:
+        parsed.assignments && typeof parsed.assignments === 'object' ? parsed.assignments : {},
+    };
+  } catch (e) {
+    console.warn(`[gemma] planTask failed: ${e.message}`);
+    return { reply: `"${text}" 작업을 팀 전원이 진행합니다.`, assignments: {} };
+  }
+}
+
+// POST /command handler: the lead acknowledges, plans, and assigns. Sets the live
+// task so the agent loops switch from idle to working on it.
+async function handleCommand(text) {
+  const t = (text || '').trim().slice(0, 500); // cap untrusted input (LLM prompt + broadcast)
+  if (!t) return { reply: '무엇을 할까요? 작업을 입력하세요.', assignments: {} };
+  if (planning)
+    return { reply: '총괄이 직전 지시를 처리 중입니다. 잠시 후 다시 시도하세요.', assignments: {} };
+  planning = true;
+  const toolId = `gemma-1-${++toolSeq}`;
+  broadcast({
+    type: 'agentToolStart',
+    id: 1,
+    toolId,
+    status: '지시 분석·분배하는 중',
+    toolName: 'Edit',
+  });
+  try {
+    const plan = await planTask(t);
+    currentTask = t;
+    assignments = plan.assignments || {};
+    broadcast({ type: 'chatReply', text: plan.reply });
+    return plan;
+  } finally {
+    broadcast({ type: 'agentToolDone', id: 1, toolId });
+    planning = false;
+  }
+}
+
 async function runAgent(id) {
   const role = roleFor(id);
   liveAgents.add(id);
@@ -316,10 +425,22 @@ async function runAgent(id) {
   await sleep(rand(300, 2000)); // stagger so they don't all move in lockstep
 
   while (running) {
-    // A "turn": 1–3 activities, each shown as a tool the character types/reads.
+    const task = currentTask;
+    if (!task) {
+      // No task yet (or it was cleared): idle. Re-affirm 'waiting' so the FSM keeps
+      // the character wandering AND so a freshly-connected viewer converges to idle
+      // (the /events replay only re-sends roster, not status). Then poll for a task.
+      broadcast({ type: 'agentToolsClear', id });
+      broadcast({ type: 'agentStatus', id, status: 'waiting', awaitingInput: false });
+      await sleep(rand(2500, 4500));
+      continue;
+    }
+    // A work "turn" on the assigned task: 1–3 contextual activities. The
+    // `currentTask === task` guard lets a new command interrupt between activities.
+    const assignment = assignments[role.name];
     const acts = 1 + Math.floor(Math.random() * 3);
-    for (let k = 0; k < acts && running; k++) {
-      const activity = await gemmaActivity(id, role);
+    for (let k = 0; k < acts && running && currentTask === task; k++) {
+      const activity = await gemmaActivity(id, role, task, assignment);
       const toolId = `gemma-${id}-${++toolSeq}`;
       broadcast({
         type: 'agentToolStart',
@@ -331,12 +452,11 @@ async function runAgent(id) {
       await sleep(rand(3500, 8000)); // "working" on it
       broadcast({ type: 'agentToolDone', id, toolId });
     }
-    // End the turn → character goes idle and wanders around the office. Clearing
-    // tools alone keeps it "active" (typing); agentStatus 'waiting' is what flips
-    // isActive=false (setAgentActive(false)), letting the idle-wander AI take over.
+    // Breather between turns → 'waiting' flips isActive=false so the idle-wander AI
+    // takes over (neutral motions), then the agent picks the task back up.
     broadcast({ type: 'agentToolsClear', id });
     broadcast({ type: 'agentStatus', id, status: 'waiting', awaitingInput: false });
-    await sleep(rand(5000, 13000));
+    await sleep(rand(4000, 9000));
   }
 }
 
