@@ -35,6 +35,26 @@ function copyAssets() {
 }
 
 /**
+ * Copy the 3D asset folder (PART A output) to dist/assets3d, so the GLB models
+ * + manifest ship in both the .vsix and the npm CLI. Optional: absent until the
+ * asset pipeline lands; the 3D renderer falls back to primitives without it.
+ */
+function copyAssets3d() {
+  const srcDir = path.join(__dirname, 'webview-ui', 'public', 'assets3d');
+  const dstDir = path.join(__dirname, 'dist', 'assets3d');
+
+  if (fs.existsSync(srcDir)) {
+    if (fs.existsSync(dstDir)) {
+      fs.rmSync(dstDir, { recursive: true });
+    }
+    fs.cpSync(srcDir, dstDir, { recursive: true });
+    console.log('✓ Copied assets3d/ → dist/assets3d/');
+  } else {
+    console.log('ℹ️  assets3d/ folder not found (optional, 3D falls back to primitives)');
+  }
+}
+
+/**
  * Bundle hook scripts (TypeScript) to dist/hooks via esbuild.
  * Produces a self-contained CJS file with shebang for Claude Code to execute.
  */
@@ -107,6 +127,7 @@ async function main() {
     await ctx.dispose();
     // Copy assets and hooks after build
     copyAssets();
+    copyAssets3d();
     buildHooks();
     await buildCli();
   }

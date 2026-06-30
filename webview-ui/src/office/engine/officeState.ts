@@ -705,6 +705,50 @@ export class OfficeState {
     }
   }
 
+  /** Pin a role character (orchestrator/devops) to a fixed seated tile so it
+   *  never wanders. Frees any desk seat it held (so a worker can use it) and
+   *  snaps it to the tile in TYPE state. Idempotent (no-op once pinned). */
+  pinFixedCharacter(id: number, col: number, row: number, facingDir: Direction): void {
+    const ch = this.characters.get(id);
+    if (!ch || ch.isFixed) return;
+    if (ch.seatId) {
+      const seat = this.seats.get(ch.seatId);
+      if (seat) seat.assigned = false;
+      ch.seatId = null;
+    }
+    // The fixed tile may host a seat (a sofa/bench). Evict whoever holds it so a
+    // worker isn't drawn on top of the fixed character, then claim it so it's
+    // never reassigned.
+    const targetSeatId = this.getSeatAtTile(col, row);
+    if (targetSeatId) {
+      for (const other of this.characters.values()) {
+        if (other.id !== id && other.seatId === targetSeatId) {
+          other.seatId = null;
+          if (other.state === CharacterState.TYPE) {
+            other.state = CharacterState.IDLE;
+            other.frame = 0;
+            other.frameTimer = 0;
+          }
+        }
+      }
+      const ts = this.seats.get(targetSeatId);
+      if (ts) ts.assigned = true;
+      ch.seatId = targetSeatId;
+    }
+    ch.isFixed = true;
+    ch.state = CharacterState.TYPE;
+    ch.tileCol = col;
+    ch.tileRow = row;
+    ch.x = col * TILE_SIZE + TILE_SIZE / 2;
+    ch.y = row * TILE_SIZE + TILE_SIZE / 2;
+    ch.dir = facingDir;
+    ch.path = [];
+    ch.moveProgress = 0;
+    ch.matrixEffect = null;
+    ch.frame = 0;
+    ch.frameTimer = 0;
+  }
+
   setAgentTokens(id: number, inputTokens: number, outputTokens: number): void {
     const ch = this.characters.get(id);
     if (!ch) return;

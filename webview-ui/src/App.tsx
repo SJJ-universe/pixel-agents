@@ -21,7 +21,8 @@ import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { EditTool } from './office/types.js';
-import { isBrowserRuntime, isE2E } from './runtime.js';
+import { Office3D } from './office3d/Office3D.js';
+import { isBrowserRuntime, isE2E, isGemmaDemo } from './runtime.js';
 import { installTestHooks } from './testHooks.js';
 import { transport } from './transport/index.js';
 
@@ -48,8 +49,22 @@ function App() {
     // browserMock is for Vite dev mode only (UI prototyping without a server).
     // In standalone server mode, the server sends all state over WebSocket.
     // In VS Code mode, the extension sends all state via postMessage.
-    if (isBrowserRuntime && import.meta.env.DEV) {
-      void import('./browserMock.js').then(({ dispatchMockMessages }) => dispatchMockMessages());
+    if (isBrowserRuntime && (import.meta.env.DEV || isGemmaDemo)) {
+      void import('./browserMock.js').then(({ dispatchMockMessages }) => {
+        dispatchMockMessages();
+        const os = getOfficeState();
+        (window as unknown as { __office: OfficeState }).__office = os;
+        // In the Gemma-demo build the runner's SSE stream creates the agents, so
+        // don't seed placeholders (their ids would collide). Dev-only: populate a
+        // few so the office isn't empty when no runner is attached.
+        if (import.meta.env.DEV) {
+          for (const id of [1, 2, 3, 4]) {
+            window.dispatchEvent(
+              new MessageEvent('message', { data: { type: 'agentCreated', id } }),
+            );
+          }
+        }
+      });
     }
   }, []);
 
@@ -92,6 +107,10 @@ function App() {
   const [hooksTooltipDismissed, setHooksTooltipDismissed] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [alwaysShowOverlay, setAlwaysShowOverlay] = useState(false);
+  // 3D is the only runtime view. The 2D pixel canvas remains solely as the layout
+  // editor's surface (its ghost/selection feedback is canvas-drawn), so it appears
+  // only while editing; normal viewing is always 3D.
+  const view3D = !editor.isEditMode;
 
   const currentMajorMinor = toMajorMinor(extensionVersion);
 
@@ -179,24 +198,36 @@ function App() {
 
   return (
     <div ref={containerRef} className="w-full h-full relative overflow-hidden">
-      <OfficeCanvas
-        officeState={officeState}
-        onClick={handleClick}
-        isEditMode={editor.isEditMode}
-        editorState={editorState}
-        onEditorTileAction={editor.handleEditorTileAction}
-        onEditorEraseAction={editor.handleEditorEraseAction}
-        onEditorSelectionChange={editor.handleEditorSelectionChange}
-        onDeleteSelected={editor.handleDeleteSelected}
-        onRotateSelected={editor.handleRotateSelected}
-        onDragMove={editor.handleDragMove}
-        editorTick={editor.editorTick}
-        zoom={editor.zoom}
-        onZoomChange={editor.handleZoomChange}
-        panRef={editor.panRef}
-      />
+      {view3D ? (
+        <Office3D
+          officeState={officeState}
+          onClick={handleClick}
+          alwaysShowLabels={alwaysShowOverlay}
+          assetBase={import.meta.env.BASE_URL}
+          agentTools={agentTools}
+          subagentCharacters={subagentCharacters}
+          onCloseAgent={handleCloseAgent}
+        />
+      ) : (
+        <OfficeCanvas
+          officeState={officeState}
+          onClick={handleClick}
+          isEditMode={editor.isEditMode}
+          editorState={editorState}
+          onEditorTileAction={editor.handleEditorTileAction}
+          onEditorEraseAction={editor.handleEditorEraseAction}
+          onEditorSelectionChange={editor.handleEditorSelectionChange}
+          onDeleteSelected={editor.handleDeleteSelected}
+          onRotateSelected={editor.handleRotateSelected}
+          onDragMove={editor.handleDragMove}
+          editorTick={editor.editorTick}
+          zoom={editor.zoom}
+          onZoomChange={editor.handleZoomChange}
+          panRef={editor.panRef}
+        />
+      )}
 
-      {!isDebugMode ? (
+      {!isDebugMode && !view3D ? (
         <>
           <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />
 
@@ -259,7 +290,7 @@ function App() {
             alwaysShowOverlay={alwaysShowOverlay}
           />
         </>
-      ) : (
+      ) : isDebugMode ? (
         <DebugView
           agents={agents}
           selectedAgent={selectedAgent}
@@ -269,7 +300,7 @@ function App() {
           officeState={officeState}
           onSelectAgent={handleSelectAgent}
         />
-      )}
+      ) : null}
 
       {/* Hooks first-run tooltip */}
       {!hooksInfoShown && !hooksTooltipDismissed && (

@@ -107,6 +107,13 @@ function browserMockAssetsPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [tailwindcss(), react(), browserMockAssetsPlugin()],
+  resolve: {
+    // The monorepo root hoists a stray react@17 (a CLI tooling transitive).
+    // react-three-fiber/drei would otherwise load it alongside the app's
+    // react@19, producing "Invalid hook call / multiple copies of React".
+    // Force every `react`/`react-dom` import to the single webview-ui copy.
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     outDir: '../dist/webview',
     emptyOutDir: true,

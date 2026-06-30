@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "characterRig": {
+    "heightWorld": 1.6,
+    "forwardDir": "up",
+    "clips": { "idle": "idle", "walk": "walk", "sitType": "typing", "sitRead": "reading", "sitFunny": "sitFunny", "sitLady": "sitLady", "sitAsk": "sitAsk", "sitTalk": "sitTalk", "sitLaugh": "sitLaugh", "phone": "phone", "pain": "pain", "layMale": "layMale", "layFemale": "layFemale", "sitFemale": "sitFemale" }
+  },
+  "characters": [
+    { "palette": 0, "model": "characters/amy.glb", "gender": "female" },
+    { "palette": 1, "model": "characters/jakie.glb", "gender": "female" },
+    { "palette": 2, "model": "characters/mouse.glb", "gender": "male" },
+    { "palette": 3, "model": "characters/pete.glb", "gender": "male" },
+    { "palette": 4, "model": "characters/steve.glb", "gender": "male" }
+  ],
+  "fixedCharacters": {
+    "devops": { "model": "characters/ch19.glb", "gender": "male", "col": 8, "row": 19, "facing": "up" },
+    "orchestrator": { "model": "characters/medea.glb", "gender": "female", "col": 14, "row": 13, "facing": "down" }
+  },
+"furniture": {
+    "DESK_FRONT":        { "model": "furniture/kenney/desk.glb",          "yawDeg": 0,   "hWorld": 0.72 },
+    "PC_FRONT_OFF":      { "model": "furniture/kenney/computerScreen.glb","yawDeg": 0,   "hWorld": 0.42, "yOff": 0.55 },
+    "PC_SIDE":           { "model": "furniture/kenney/computerScreen.glb","yawDeg": -90, "hWorld": 0.42 },
+    "CUSHIONED_BENCH":   { "model": "furniture/kenney/chairDesk.glb",     "yawDeg": 180, "hWorld": 0.85 },
+    "COFFEE_TABLE":      { "model": "furniture/kenney/tableCoffee.glb",   "yawDeg": 0,   "hWorld": 0.40 },
+    "SMALL_TABLE_FRONT": { "model": "furniture/kenney/sideTable.glb",     "yawDeg": 0,   "hWorld": 0.58 },
+    "SOFA_FRONT":        { "model": "furniture/kenney/loungeSofa.glb",    "yawDeg": 0,   "hWorld": 0.70 },
+    "SOFA_BACK":         { "model": "furniture/kenney/loungeSofa.glb",    "yawDeg": 180, "hWorld": 0.70 },
+    "SOFA_SIDE":         { "model": "furniture/kenney/loungeSofa.glb",    "yawDeg": -90, "hWorld": 0.70 },
+    "SOFA_SIDE:left":    { "model": "furniture/kenney/loungeSofa.glb",    "yawDeg": 90,  "hWorld": 0.70 },
+    "PLANT":             { "model": "furniture/kenney/pottedPlant.glb",   "yawDeg": 0,   "hWorld": 0.80 },
+    "PLANT_2":           { "model": "furniture/kenney/plantSmall2.glb",   "yawDeg": 0,   "hWorld": 0.45 },
+    "BIN":               { "model": "furniture/kenney/trashcan.glb",      "yawDeg": 0,   "hWorld": 0.60 }
+  }
+}

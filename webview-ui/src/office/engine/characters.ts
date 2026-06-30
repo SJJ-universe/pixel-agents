@@ -1,6 +1,4 @@
 import {
-  SEAT_REST_MAX_SEC,
-  SEAT_REST_MIN_SEC,
   TYPE_FRAME_DURATION_SEC,
   WALK_FRAME_DURATION_SEC,
   WALK_SPEED_PX_PER_SEC,
@@ -98,19 +96,27 @@ export function updateCharacter(
 ): void {
   ch.frameTimer += dt;
 
+  // Fixed role characters (orchestrator/devops) never move — they stay seated at
+  // their pinned tile forever; just advance the typing/idle frame.
+  if (ch.isFixed) {
+    ch.state = CharacterState.TYPE;
+    if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {
+      ch.frameTimer -= TYPE_FRAME_DURATION_SEC;
+      ch.frame = (ch.frame + 1) % 2;
+    }
+    return;
+  }
+
   switch (ch.state) {
     case CharacterState.TYPE: {
       if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {
         ch.frameTimer -= TYPE_FRAME_DURATION_SEC;
         ch.frame = (ch.frame + 1) % 2;
       }
-      // If no longer active, stand up and start wandering (after seatTimer expires)
+      // Mobile agents only sit at a desk WHILE working. The moment the turn ends
+      // they stand up and wander freely (no lingering rest at the desk).
       if (!ch.isActive) {
-        if (ch.seatTimer > 0) {
-          ch.seatTimer -= dt;
-          break;
-        }
-        ch.seatTimer = 0; // clear sentinel
+        ch.seatTimer = 0;
         ch.state = CharacterState.IDLE;
         ch.frame = 0;
         ch.frameTimer = 0;
@@ -160,31 +166,11 @@ export function updateCharacter(
         }
         break;
       }
-      // Countdown wander timer
+      // Countdown wander timer. Non-working agents never return to a desk to
+      // rest — they just keep wandering freely (neutral motions show in the
+      // lounge, driven by the renderer).
       ch.wanderTimer -= dt;
       if (ch.wanderTimer <= 0) {
-        // Check if we've wandered enough — return to seat for a rest
-        if (ch.wanderCount >= ch.wanderLimit && ch.seatId) {
-          const seat = seats.get(ch.seatId);
-          if (seat) {
-            const path = findPath(
-              ch.tileCol,
-              ch.tileRow,
-              seat.seatCol,
-              seat.seatRow,
-              tileMap,
-              blockedTiles,
-            );
-            if (path.length > 0) {
-              ch.path = path;
-              ch.moveProgress = 0;
-              ch.state = CharacterState.WALK;
-              ch.frame = 0;
-              ch.frameTimer = 0;
-              break;
-            }
-          }
-        }
         if (walkableTiles.length > 0) {
           const target = walkableTiles[Math.floor(Math.random() * walkableTiles.length)];
           const path = findPath(
@@ -236,29 +222,7 @@ export function updateCharacter(
             }
           }
         } else {
-          // Check if arrived at assigned seat — sit down for a rest before wandering again
-          if (ch.seatId) {
-            const seat = seats.get(ch.seatId);
-            if (seat && ch.tileCol === seat.seatCol && ch.tileRow === seat.seatRow) {
-              ch.state = CharacterState.TYPE;
-              ch.dir = seat.facingDir;
-              // seatTimer < 0 is a sentinel from setAgentActive(false) meaning
-              // "turn just ended" — skip the long rest so idle transition is immediate
-              if (ch.seatTimer < 0) {
-                ch.seatTimer = 0;
-              } else {
-                ch.seatTimer = randomRange(SEAT_REST_MIN_SEC, SEAT_REST_MAX_SEC);
-              }
-              ch.wanderCount = 0;
-              ch.wanderLimit = randomInt(
-                WANDER_MOVES_BEFORE_REST_MIN,
-                WANDER_MOVES_BEFORE_REST_MAX,
-              );
-              ch.frame = 0;
-              ch.frameTimer = 0;
-              break;
-            }
-          }
+          // Not working → keep wandering; mobile agents never sit at a desk.
           ch.state = CharacterState.IDLE;
           ch.wanderTimer = randomRange(WANDER_PAUSE_MIN_SEC, WANDER_PAUSE_MAX_SEC);
         }

@@ -197,6 +197,9 @@ export interface Character {
   leadAgentId?: number;
   /** True when lead spawns teammates via tmux (run_in_background Agent calls) */
   teamUsesTmux?: boolean;
+  /** Fixed role character (orchestrator/devops): pinned to its seat, never
+   *  wanders. Set in OfficeState.setTeamInfo once the role is known. */
+  isFixed?: boolean;
   /** Cumulative input tokens consumed */
   inputTokens: number;
   /** Cumulative output tokens consumed */

@@ -1,0 +1,205 @@
+{
+  "assetDir": "C:\\Users\\SJ\\Desktop\\pixel-agents\\webview-ui\\public\\assets\\characters3d",
+  "files": {
+    "Remy": {
+      "file": "Remy.fbx",
+      "exists": true,
+      "animationCount": 2,
+      "skinnedBoneCount": 114,
+      "boneNodeCount": 67,
+      "sampleBones": [
+        "mixamorigLeftLeg",
+        "mixamorigLeftFoot",
+        "mixamorigLeftToeBase",
+        "mixamorigLeftToe_End",
+        "mixamorigRightLeg",
+        "mixamorigRightFoot"
+      ],
+      "clip": {
+        "name": "mixamo.com",
+        "duration": 0.03,
+        "trackCount": 53,
+        "sampleTracks": [
+          "mixamorigHips.position",
+          "mixamorigHips.quaternion",
+          "mixamorigSpine.quaternion",
+          "mixamorigSpine1.quaternion"
+        ],
+        "prefixes": [
+          "mixamorigHips",
+          "mixamorigSpine",
+          "mixamorigSpine1",
+          "mixamorigSpine2"
+        ]
+      },
+      "hips": {
+        "track": "mixamorigHips.position",
+        "frames": 2,
+        "xRange": 0,
+        "xNet": 0,
+        "yRange": 0,
+        "yNet": 0,
+        "zRange": 0,
+        "zNet": 0,
+        "horizNet": 0,
+        "horizRange": 0,
+        "inPlace": true
+      }
+    },
+    "idle": {
+      "file": "idle.fbx",
+      "exists": true,
+      "animationCount": 1,
+      "skinnedBoneCount": 0,
+      "boneNodeCount": 67,
+      "sampleBones": [
+        "mixamorigHips",
+        "mixamorigSpine",
+        "mixamorigSpine1",
+        "mixamorigSpine2",
+        "mixamorigNeck",
+        "mixamorigHead"
+      ],
+      "clip": {
+        "name": "mixamo.com",
+        "duration": 8.33,
+        "trackCount": 53,
+        "sampleTracks": [
+          "mixamorigHips.position",
+          "mixamorigHips.quaternion",
+          "mixamorigSpine.quaternion",
+          "mixamorigSpine1.quaternion"
+        ],
+        "prefixes": [
+          "mixamorigHips",
+          "mixamorigSpine",
+          "mixamorigSpine1",
+          "mixamorigSpine2"
+        ]
+      },
+      "hips": {
+        "track": "mixamorigHips.position",
+        "frames": 251,
+        "xRange": 2.12,
+        "xNet": 0,
+        "yRange": 0.32,
+        "yNet": 0,
+        "zRange": 2.44,
+        "zNet": 0,
+        "horizNet": 0,
+        "horizRange": 3.24,
+        "inPlace": true
+      },
+      "boneCompat": {
+        "animBoneCount": 52,
+        "remyBoneCount": 67,
+        "missingInRemy": [],
+        "compatible": true
+      }
+    },
+    "walking": {
+      "file": "walking.fbx",
+      "exists": true,
+      "animationCount": 1,
+      "skinnedBoneCount": 0,
+      "boneNodeCount": 67,
+      "sampleBones": [
+        "mixamorigHips",
+        "mixamorigSpine",
+        "mixamorigSpine1",
+        "mixamorigSpine2",
+        "mixamorigLeftShoulder",
+        "mixamorigLeftArm"
+      ],
+      "clip": {
+        "name": "mixamo.com",
+        "duration": 1.03,
+        "trackCount": 53,
+        "sampleTracks": [
+          "mixamorigHips.position",
+          "mixamorigHips.quaternion",
+          "mixamorigSpine.quaternion",
+          "mixamorigSpine1.quaternion"
+        ],
+        "prefixes": [
+          "mixamorigHips",
+          "mixamorigSpine",
+          "mixamorigSpine1",
+          "mixamorigSpine2"
+        ]
+      },
+      "hips": {
+        "track": "mixamorigHips.position",
+        "frames": 32,
+        "xRange": 8.16,
+        "xNet": 0,
+        "yRange": 15.4,
+        "yNet": 0,
+        "zRange": 6.18,
+        "zNet": 0,
+        "horizNet": 0,
+        "horizRange": 10.24,
+        "inPlace": true
+      },
+      "boneCompat": {
+        "animBoneCount": 52,
+        "remyBoneCount": 67,
+        "missingInRemy": [],
+        "compatible": true
+      }
+    },
+    "typing": {
+      "file": "typing.fbx",
+      "exists": true,
+      "animationCount": 1,
+      "skinnedBoneCount": 0,
+      "boneNodeCount": 67,
+      "sampleBones": [
+        "mixamorigHips",
+        "mixamorigSpine",
+        "mixamorigSpine1",
+        "mixamorigSpine2",
+        "mixamorigNeck",
+        "mixamorigHead"
+      ],
+      "clip": {
+        "name": "mixamo.com",
+        "duration": 16.47,
+        "trackCount": 53,
+        "sampleTracks": [
+          "mixamorigHips.position",
+          "mixamorigHips.quaternion",
+          "mixamorigSpine.quaternion",
+          "mixamorigSpine1.quaternion"
+        ],
+        "prefixes": [
+          "mixamorigHips",
+          "mixamorigSpine",
+          "mixamorigSpine1",
+          "mixamorigSpine2"
+        ]
+      },
+      "hips": {
+        "track": "mixamorigHips.position",
+        "frames": 495,
+        "xRange": 2.31,
+        "xNet": 0,
+        "yRange": 1.65,
+        "yNet": 0,
+        "zRange": 1.13,
+        "zNet": 0,
+        "horizNet": 0,
+        "horizRange": 2.57,
+        "inPlace": true
+      },
+      "boneCompat": {
+        "animBoneCount": 52,
+        "remyBoneCount": 67,
+        "missingInRemy": [],
+        "compatible": true
+      }
+    }
+  },
+  "problems": [],
+  "ok": true
+}

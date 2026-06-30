@@ -42,7 +42,9 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/constants.ts', 'src/fonts/**', 'src/office/sprites/**'],
+    // office3d/** holds the 3D renderer's own scene/material colors and DOM
+    // overlay styles; the pixel-art color/shadow/font rules don't apply there.
+    files: ['src/constants.ts', 'src/fonts/**', 'src/office/sprites/**', 'src/office3d/**'],
     rules: {
       'pixel-agents/no-inline-colors': 'off',
       'pixel-agents/pixel-shadow': 'off',

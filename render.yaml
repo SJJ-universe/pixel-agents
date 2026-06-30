@@ -1,0 +1,33 @@
+# Render Blueprint — deploys the Gemma live office as ONE web service.
+#
+# A single Node service both serves the built office (the SPA) AND streams the
+# live Gemma agent events at /events (same origin → no CORS, no second host).
+# The OpenRouter key stays server-side as a secret env var; the browser never sees it.
+#
+# Deploy: Render dashboard → New → Blueprint → pick this repo. Render reads this
+# file, then asks you to fill OPENROUTER_API_KEY (the one value marked sync:false).
+#
+# Mode: runner.mjs = visual / activity-label mode (safe — it never runs shell
+# commands). The code-EDITING harness (coder.mjs) is intentionally NOT exposed.
+services:
+  - type: web
+    name: gemma-pixel-office
+    runtime: node
+    plan: free
+    # Build the office with the demo flag (browserMock + same-origin SSE bridge),
+    # transpile-only (no tsc gate) so the in-progress 3D work can't block deploy.
+    buildCommand: npm install && VITE_GEMMA_DEMO=1 npm run build:gemma-demo
+    startCommand: node scripts/gemma-agents/runner.mjs
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false # ← set this as a secret in the Render dashboard
+      - key: HOST
+        value: 0.0.0.0 # bind all interfaces so Render can route to it
+      - key: GEMMA_MODEL
+        value: google/gemma-4-26b-a4b-it
+      - key: AGENTS
+        value: "7"
+      - key: NODE_VERSION
+        value: "20"
