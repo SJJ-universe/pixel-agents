@@ -19,7 +19,7 @@ services:
     buildCommand: npm install && VITE_GEMMA_DEMO=1 npm run build:gemma-demo
     startCommand: node scripts/gemma-agents/runner.mjs
     healthCheckPath: /health
-    autoDeploy: false
+    autoDeploy: true # redeploy on every push to the connected branch
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false # ← set this as a secret in the Render dashboard
@@ -31,3 +31,10 @@ services:
         value: "7"
       - key: NODE_VERSION
         value: "20"
+      # Keep the fresh `npm install` lean on the build server: the runtime is pure
+      # Node stdlib, so skip dev-only postinstall downloads that aren't needed to
+      # build the webview (Playwright's ~1GB browsers; husky git hooks).
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "1"
+      - key: HUSKY
+        value: "0"
