@@ -86,7 +86,7 @@ export function ChatPanel() {
   return (
     <div style={panelStyle} onPointerDown={(e) => e.stopPropagation()}>
       <div style={headerRowStyle}>
-        <span style={headerStyle}>총괄 채팅 — 작업을 자연어로 지시하세요</span>
+        <span style={headerStyle}>총괄 채팅 · 시각화 데모 — 실제 결과물은 저장되지 않습니다</span>
         <button
           type="button"
           onClick={reset}

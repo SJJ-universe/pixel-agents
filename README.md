@@ -101,6 +101,22 @@ npm run gemma:dev        # Vite dev 서버 + Gemma runner 병렬 실행
 
 runner가 읽는 환경 변수: `OPENROUTER_API_KEY`, `GEMMA_MODEL`(기본 `google/gemma-4-26b-a4b-it`), `AGENTS`(기본 `7`), `PORT`(기본 `7777`), `HOST`(기본 `127.0.0.1`).
 
+## 실제 결과물을 만드는 병렬 에이전트 워크플로우 (`coder.mjs`)
+
+위 라이브 데모와 기본 실행은 **시각화 전용**이라 결과물이 저장되지 않습니다. 실제로 코드를 만들어 **파일로 남기려면** 로컬에서 `coder.mjs`를 돌리세요. 활동 라벨만 내보내는 `runner.mjs`와 달리, 각 Gemma 에이전트에게 **진짜 도구**(`read_file` / `list_dir` / `write_file` / `run_cmd` / `finish`)를 주고 tool-calling 루프를 돌려 실제로 소프트웨어를 만듭니다. 흐름: 총괄이 계획 → 아키텍트 · 백엔드 · 프론트엔드가 서로 다른 파일을 병렬로 구현 → 테스터가 테스트 · 수정 → 총괄이 `SUMMARY.md`를 작성. 같은 오피스 이벤트를 내보내므로 3D 오피스가 **진짜 작업**을 그대로 시각화합니다.
+
+```bash
+cp scripts/gemma-agents/.env.example scripts/gemma-agents/.env   # .env 에 OPENROUTER_API_KEY 입력
+TASK="만들 것을 한글로 적기" npm run coder:dev                    # runner + 웹뷰; localhost:5173 열고 3D 토글
+```
+
+- **계획만 미리보기(쓰기 없음):** `node scripts/gemma-agents/coder.mjs --dry-plan`
+- **API 없이 자체검사:** `node scripts/gemma-agents/coder.mjs --selftest`
+
+**결과물이 저장되는 곳:** `WORKSPACE_DIR`(기본 `~/Desktop/gemma-workspace`) — 에이전트가 만든 실제 파일과 `SUMMARY.md`가 여기에 남습니다. 환경 변수로 조절: `TASK`(만들 것), `WORKSPACE_DIR`(작업 폴더), `ALLOW_RUN=0`(셸 실행 끄기 — 읽기/쓰기만), `MAX_STEPS`(기본 14).
+
+**안전:** 모든 파일 조작은 `WORKSPACE_DIR`에 path-jail되고(탈출 거부), `run_cmd`는 타임아웃 + 치명적 명령 deny-list로 보호됩니다. 그래도 모델이 고른 실제 셸을 실행하므로 **버려도 되는 워크스페이스**를 쓰세요. 이 harness는 RCE 위험 때문에 **공개 배포에는 올리지 않았습니다**(라이브 서버에서는 시각화 전용 `runner.mjs`만 돕니다). 경량 Gemma 4는 Claude보다 코딩이 약해 결과가 거칠 수 있습니다. 자세한 내용은 [`scripts/gemma-agents/README.md`](scripts/gemma-agents/README.md).
+
 ## 직접 배포하기
 
 이 리포는 [Render Blueprint](render.yaml)를 포함합니다. Render 대시보드에서 **New → Blueprint → 이 리포 선택**. Render가 `render.yaml`을 읽고 시크릿 하나 `OPENROUTER_API_KEY`만 입력받습니다. 빌드는 `VITE_GEMMA_DEMO=1 npm run build:gemma-demo`, 실행은 `node scripts/gemma-agents/runner.mjs`로 이뤄지고, `autoDeploy`가 켜져 있어 연결된 브랜치에 push할 때마다 재배포됩니다.

@@ -41,6 +41,21 @@ export function SettingsModal({
   // so those settings do nothing there — hide them and keep only what works (sound).
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isGemmaDemo ? '설정' : 'Settings'}>
+      {isGemmaDemo && (
+        <div className="px-10 py-8 text-xs text-text-muted leading-[1.6]">
+          이 서버는 <b>시각화 데모</b>입니다. 실제 결과물은 저장되지 않습니다. 병렬 에이전트
+          워크스페이스로 실제 코드를 만들려면 README를 참고하세요.
+          <br />
+          <a
+            href="https://github.com/SJJ-universe/pixel-agents"
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent underline"
+          >
+            github.com/SJJ-universe/pixel-agents
+          </a>
+        </div>
+      )}
       {!isGemmaDemo && (
         <>
           <MenuItem
