@@ -20,6 +20,8 @@ export const WAITING_INPUT_ACTIVITY_TEXT = '입력 기다리는 중';
 
 /** Label when an agent has no active tool. Exported so callers can detect it. */
 export const IDLE_ACTIVITY_TEXT = '대기 중';
+/** Friendlier idle label used by the Gemma demo's always-on head labels. */
+export const REST_ACTIVITY_TEXT = '쉬는중';
 /** Label shown while a tool waits on the user's approval. */
 export const PERMISSION_ACTIVITY_TEXT = '승인 필요';
 

@@ -69,6 +69,8 @@ const HOVER_RING_COLOR = '#aab4ff';
 // the 2D CHARACTER_SITTING_OFFSET_PX. ~0.7 = normalized x==z component.
 const SEAT_OFFSET = 0.15;
 const SEAT_AXIS = 0.707;
+// Reused scratch vector for the per-frame floor clamp (avoids per-frame allocation).
+const clampVec = new THREE.Vector3();
 
 /** Clone a material and rotate its base color hue by `hueShift` degrees. */
 function tintMaterial(m: THREE.Material, hueShift: number): THREE.Material {
@@ -119,21 +121,32 @@ function GltfAvatar({
   // group) it binds to look-alike tree nodes that don't drive the skin -> the
   // mixer advances but nothing deforms (frozen T-pose). All 7 body parts share
   // one skeleton, so binding through any one of them animates the whole avatar.
-  const { mixer, actions, bones } = useMemo(() => {
+  const { mixer, actions, bones, skinned } = useMemo(() => {
     let root: THREE.Object3D = cloned;
     let bones: THREE.Bone[] = [];
+    const skinned: THREE.SkinnedMesh[] = [];
     cloned.traverse((o) => {
       const sm = o as THREE.SkinnedMesh;
-      if (root === cloned && sm.isSkinnedMesh) {
-        root = sm;
-        bones = sm.skeleton.bones;
+      if (sm.isSkinnedMesh) {
+        skinned.push(sm);
+        if (root === cloned) {
+          root = sm; // bind the mixer to the first skinned mesh
+          bones = sm.skeleton.bones;
+        }
       }
     });
     const m = new THREE.AnimationMixer(root);
-    return { mixer: m, actions: buildAvatarActions(m, gltf.animations, manifest), bones };
+    return { mixer: m, actions: buildAvatarActions(m, gltf.animations, manifest), bones, skinned };
   }, [cloned, gltf.animations, manifest]);
   const currentKey = useRef<ClipKey | null>(null);
   const avatarRef = useRef<THREE.Group>(null);
+  // Floor clamp: fast per-frame bone anchor + a cached "geometry hangs below the
+  // lowest bone" delta (measured by a subsampled vertex scan, refreshed on clip
+  // change and on a timer). Keeps the per-frame cost at ~bone-count while still
+  // grounding the actual lowest rendered vertex. See the clamp in useFrame below.
+  const floorDelta = useRef(0);
+  const floorRecalc = useRef(true);
+  const floorTimer = useRef(0);
   // Neutral-pose cycling (lounge / seated rest). Gender + role are resolved per
   // frame below because the role arrives after spawn (setTeamInfo).
   const sitVariant = useRef(0);
@@ -181,25 +194,56 @@ function GltfAvatar({
       if (key !== currentKey.current) {
         crossfadeTo(actions, currentKey.current, key, CLIP_FADE_SEC);
         currentKey.current = key;
+        floorRecalc.current = true; // re-measure the floor delta for the new pose
       }
     }
     mixer.update(dt);
 
-    // Floor clamp: fitSkinnedToHeight anchors the T-pose feet to y=0, but the
-    // seated clips (typing/reading) drop the root, sinking the character up to
-    // ~0.7 below the floor. Re-anchor the lowest bone to the floor every frame so
-    // a seated character's feet rest on the ground and its hips land at seat
-    // height. Skipped while the spawn/despawn scale animates (group scale ≠ 1
-    // would distort the world-Y math). Converges in one frame (feedback → ~0).
+    // Floor clamp: fitSkinnedToHeight anchors the T-pose feet to y=0, but animated
+    // poses move the body off that anchor — seated clips (typing/reading) drop the
+    // root (sink ~0.7), and reclining/crouched neutral poses (lay*/pain/floor-sits)
+    // hang body geometry BELOW the lowest bone. Anchoring the lowest BONE therefore
+    // still let the back/side/hip clip through the floor for those poses (measured
+    // ~0.05–0.12 below). Ground the lowest actually-rendered VERTEX instead: a cheap
+    // per-frame bone anchor plus a cached "geometry hangs below the bone" delta
+    // (subsampled scan, refreshed on clip change + on a timer), so no part of the
+    // character ever crosses the floor. Skipped while the spawn/despawn scale
+    // animates (group scale ≠ 1 distorts the world-Y math). Converges in one frame.
     const g = avatarRef.current;
     if (g && bones.length && !ch?.matrixEffect) {
       g.updateWorldMatrix(true, true);
-      let minY = Infinity;
+      // Cheap per-frame anchor: the lowest bone's world-Y.
+      let boneMinY = Infinity;
       for (const b of bones) {
         const y = b.matrixWorld.elements[13];
-        if (y < minY) minY = y;
+        if (y < boneMinY) boneMinY = y;
       }
-      if (Number.isFinite(minY) && Math.abs(minY) > 0.002) g.position.y -= minY;
+      // Refresh the cached geometry-below-bone delta on clip change and ~2×/sec
+      // (bounds staleness while the pose animates). One subsampled vertex scan —
+      // these are high-poly Mixamo meshes (~8k verts each), so a full per-frame
+      // scan is far too costly; sampling ~800/mesh catches the lowest extremity.
+      floorTimer.current += dt;
+      if (floorRecalc.current || floorTimer.current >= 0.5) {
+        floorRecalc.current = false;
+        floorTimer.current = 0;
+        let vertMinY = Infinity;
+        for (const sm of skinned) {
+          const nn = sm.geometry.attributes.position.count;
+          const st = Math.max(1, Math.floor(nn / 800));
+          for (let i = 0; i < nn; i += st) {
+            sm.getVertexPosition(i, clampVec);
+            clampVec.applyMatrix4(sm.matrixWorld);
+            if (clampVec.y < vertMinY) vertMinY = clampVec.y;
+          }
+        }
+        // ≥ 0 when geometry hangs below the bone (the sinking case).
+        floorDelta.current = Number.isFinite(vertMinY) ? boneMinY - vertMinY : 0;
+      }
+      // Ground the lowest VERTEX (bone anchor minus how far geometry hangs below it).
+      const lowestVertexY = boneMinY - floorDelta.current;
+      if (Number.isFinite(lowestVertexY) && Math.abs(lowestVertexY) > 0.002) {
+        g.position.y -= lowestVertexY;
+      }
     }
   });
 

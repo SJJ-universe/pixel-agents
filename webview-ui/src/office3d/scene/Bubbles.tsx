@@ -19,10 +19,12 @@ import {
   getActivityText,
   getFuelColor,
   IDLE_ACTIVITY_TEXT,
+  REST_ACTIVITY_TEXT,
   WAITING_INPUT_ACTIVITY_TEXT,
 } from '../../office/activity.js';
 import type { OfficeState } from '../../office/engine/officeState.js';
 import type { ToolActivity } from '../../office/types.js';
+import { isGemmaDemo } from '../../runtime.js';
 
 interface HeadBubbleProps {
   id: number;
@@ -113,11 +115,24 @@ export function HeadBubble({
     // Compact "[doing X]" bubble shows whenever the agent is actively working,
     // even when not selected — the 3D equivalent of the 2D character animating.
     const hasActiveTool = agentTools[id]?.some((t) => !t.done) ?? false;
-    const activity =
-      fullPanel || hasActiveTool ? activityFor(id, ch, agentTools, subagentCharacters) : '';
-    const compactActivity =
+    let activity =
+      fullPanel || hasActiveTool || isGemmaDemo
+        ? activityFor(id, ch, agentTools, subagentCharacters)
+        : '';
+    let compactVisible =
       !fullPanel && hasActiveTool && activity !== '' && activity !== IDLE_ACTIVITY_TEXT;
-    const panelVisible = fullPanel || compactActivity;
+    // Gemma demo: every character is always labeled "이름 · 상태" — the live work
+    // activity while busy, or "쉬는중" (resting) while idle — so a viewer can read
+    // who is who and who is working at a glance, and the label carries the agent's
+    // own name. (The real extension keeps the hover/select-only compact bubble.)
+    if (isGemmaDemo && !fullPanel && !isSub) {
+      const working = hasActiveTool && activity !== '' && activity !== IDLE_ACTIVITY_TEXT;
+      const status = working ? activity : REST_ACTIVITY_TEXT;
+      const nm = ch.agentName || (ch.isTeamLead ? 'LEAD' : '');
+      activity = nm ? `${nm} · ${status}` : status;
+      compactVisible = true;
+    }
+    const panelVisible = fullPanel || compactVisible;
 
     // role/folder/gauge/× are full-panel only; the compact bubble is task-only.
     // Show the lead's role name when it has one (Gemma roles), else the 'LEAD' tag
