@@ -28,9 +28,9 @@ The base project turns any multi-agent AI system into something you can _see_: e
 
 - **A live, hosted office** — a single Node service serves the built office _and_ streams live agent events from the same origin. One URL, no setup, nothing to install.
 - **Real Gemma agents driving it** — a separate runner talks to `google/gemma-4-26b-a4b-it` via OpenRouter and emits office events (agent created, tool started/finished, waiting, chat reply). The office app itself **never calls an LLM** — it only visualizes events, so the runner is fully swappable.
-- **A "총괄" (lead) chat** — type a task to the lead agent and watch it plan, delegate to the specialists, and drive them through the work in real time.
+- **A "총괄" (lead) chat that reports back** — type a task to the lead; it plans and delegates to the specialists, and the chat then fills with live progress (each agent posts what it's working on, labelled by role) and a final completion report from the lead, after which the team returns to idle. A **작업 초기화** button stops the current task at any time.
 - **Idle vs. working labels** — every character is always tagged `name · status`: the live activity while busy, or **`쉬는중` (resting)** while idle — so you can read who is who and who is working at a glance.
-- **A 3D office renderer** — toggle from pixel sprites to animated 3D Mixamo characters (react-three-fiber), with head-mounted speech bubbles and floor-grounded animation.
+- **A 3D office renderer** — toggle from pixel sprites to animated 3D Mixamo characters (react-three-fiber), viewed as a top-down diorama or a first-person walkthrough (WASD), with head-mounted speech bubbles and floor-grounded animation.
 
 ## The seven agents
 
@@ -58,7 +58,7 @@ Your browser  ──GET /──────────────►  built of
               ──POST /command───────►  the 총괄 chat: assign a task to the lead
 
 Server (scripts/gemma-agents/runner.mjs, Node stdlib only)
-    │  serves the SPA + streams events + relays the lead's plan
+    │  serves the SPA + streams events + relays the plan, progress & report
     └──HTTPS──►  OpenRouter  ──►  google/gemma-4-26b-a4b-it
 ```
 
@@ -66,6 +66,7 @@ Key design points:
 
 - **One service, one origin.** The runner serves the SPA and the `/events` stream from the same host, so there is no second server and no CORS. `/health` is the liveness endpoint.
 - **The office never sees the API key.** `OPENROUTER_API_KEY` lives only in the server process (a Render secret, `sync: false`). The browser only receives already-rendered office events.
+- **Idle is free.** Agents call OpenRouter only while a task is active; with no task they just broadcast a "waiting" heartbeat, so an idle demo spends no tokens. A task auto-ends after the lead's completion report (or when you hit 작업 초기화), which bounds the cost.
 - **The app is LLM-agnostic.** The office consumes a small, typed stream of events. The Gemma runner is just one producer — the built-in browser mock or any other driver can replace it without touching the UI.
 - **Safe by construction.** The deployed runner is the visual/activity driver only. The separate code-editing harness that can run shell commands is intentionally **not** exposed on the public deploy.
 
