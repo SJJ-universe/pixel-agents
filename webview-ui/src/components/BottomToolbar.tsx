@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { WorkspaceFolder } from '../hooks/useExtensionMessages.js';
-import { isBrowserRuntime } from '../runtime.js';
+import { isBrowserRuntime, isGemmaDemo } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { Button } from './ui/Button.js';
 import { Dropdown, DropdownItem } from './ui/Dropdown.js';
@@ -120,19 +120,23 @@ export function BottomToolbar({
           </Dropdown>
         </div>
       )}
-      <Button
-        variant={isEditMode ? 'active' : 'default'}
-        onClick={onToggleEditMode}
-        title="Edit office layout"
-      >
-        Layout
-      </Button>
+      {/* Layout editor is hidden in the live Gemma demo — it's a read-only viewer and
+          edits don't persist server-side. The VS Code extension keeps it. */}
+      {!isGemmaDemo && (
+        <Button
+          variant={isEditMode ? 'active' : 'default'}
+          onClick={onToggleEditMode}
+          title="Edit office layout"
+        >
+          Layout
+        </Button>
+      )}
       <Button
         variant={isSettingsOpen ? 'active' : 'default'}
         onClick={onToggleSettings}
-        title="Settings"
+        title={isGemmaDemo ? '설정' : 'Settings'}
       >
-        Settings
+        {isGemmaDemo ? '설정' : 'Settings'}
       </Button>
     </div>
   );

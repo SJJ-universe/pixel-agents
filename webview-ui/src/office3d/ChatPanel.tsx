@@ -18,9 +18,11 @@ const FG = '#e6e6f0';
 const LEAD_BG = '#2a2a44';
 const USER_BG = '#394066';
 const MUTED = '#9a9ab8';
+const LEAD_NAME_FG = '#c9c9ff'; // agent/role name accent on non-user lines
 
 interface Msg {
-  from: 'user' | 'lead';
+  /** '나' for the user, otherwise the speaking agent's role name ('총괄', '백엔드', …). */
+  from: string;
   text: string;
 }
 
@@ -30,13 +32,14 @@ export function ChatPanel() {
   const [busy, setBusy] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
 
-  // Lead replies come over the SSE bridge as window 'message' { type:'chatReply' }.
+  // Replies + live progress come over the SSE bridge as window 'message'
+  // { type:'chatReply', from, text }. `from` is the role name (defaults to 총괄).
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
-      const d = e.data as { type?: string; text?: string } | undefined;
+      const d = e.data as { type?: string; from?: string; text?: string } | undefined;
       const text = d?.text;
       if (d?.type === 'chatReply' && typeof text === 'string') {
-        setMessages((m) => [...m, { from: 'lead', text }]);
+        setMessages((m) => [...m, { from: d?.from || '총괄', text }]);
         setBusy(false);
       }
     };
@@ -53,7 +56,7 @@ export function ChatPanel() {
     e.preventDefault();
     const text = input.trim();
     if (!text || busy) return;
-    setMessages((m) => [...m, { from: 'user', text }]);
+    setMessages((m) => [...m, { from: '나', text }]);
     setInput('');
     setBusy(true);
     fetch(CMD_URL, {
@@ -61,28 +64,57 @@ export function ChatPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     }).catch(() => {
-      setMessages((m) => [...m, { from: 'lead', text: '러너에 연결할 수 없습니다.' }]);
+      setMessages((m) => [...m, { from: '총괄', text: '러너에 연결할 수 없습니다.' }]);
       setBusy(false);
     });
     // The reply is appended by the chatReply listener above (keeps all viewers in sync).
   };
 
+  // "작업 초기화": stop the current task and return the team to idle. The runner's
+  // acknowledgement comes back over SSE as a chatReply (keeps all viewers in sync).
+  const reset = () => {
+    fetch(CMD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reset: true }),
+    }).catch(() => {
+      setMessages((m) => [...m, { from: '총괄', text: '러너에 연결할 수 없습니다.' }]);
+    });
+    setBusy(false);
+  };
+
   return (
     <div style={panelStyle} onPointerDown={(e) => e.stopPropagation()}>
-      <div style={headerStyle}>총괄 채팅 — 작업을 자연어로 지시하세요</div>
+      <div style={headerRowStyle}>
+        <span style={headerStyle}>총괄 채팅 — 작업을 자연어로 지시하세요</span>
+        <button
+          type="button"
+          onClick={reset}
+          title="현재 작업을 멈추고 팀을 대기로"
+          style={resetStyle}
+        >
+          작업 초기화
+        </button>
+      </div>
       <div ref={logRef} style={logStyle}>
         {messages.length === 0 && (
           <div style={{ color: MUTED, fontSize: 11, lineHeight: 1.5 }}>
             예: "할 일 관리 웹앱 만들어줘", "로그인 버그 고쳐줘". 총괄이 팀에 분배하면 캐릭터들이 그
-            작업을 시작합니다. 지시 전에는 자유롭게 대기합니다.
+            작업을 시작하고, 진행 상황과 완료 보고가 여기 올라옵니다. 지시 전에는 자유롭게
+            대기합니다.
           </div>
         )}
-        {messages.map((m, i) => (
-          <div key={i} style={m.from === 'user' ? userMsgStyle : leadMsgStyle}>
-            <span style={{ color: MUTED, fontSize: 10 }}>{m.from === 'user' ? '나' : '총괄'}</span>
-            <div>{m.text}</div>
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          const mine = m.from === '나';
+          return (
+            <div key={i} style={mine ? userMsgStyle : leadMsgStyle}>
+              <span style={{ color: mine ? MUTED : LEAD_NAME_FG, fontSize: 10, fontWeight: 700 }}>
+                {m.from}
+              </span>
+              <div>{m.text}</div>
+            </div>
+          );
+        })}
         {busy && <div style={{ color: MUTED, fontSize: 11 }}>총괄이 분배 중…</div>}
       </div>
       <form onSubmit={submit} style={{ display: 'flex', gap: 4 }}>
@@ -114,7 +146,23 @@ const panelStyle: CSSProperties = {
   color: FG,
   fontSize: 12,
 };
+const headerRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 6,
+};
 const headerStyle: CSSProperties = { fontWeight: 700, fontSize: 11, opacity: 0.85 };
+const resetStyle: CSSProperties = {
+  cursor: 'pointer',
+  background: 'transparent',
+  border: `1px solid ${BORDER}`,
+  color: MUTED,
+  fontSize: 10,
+  padding: '2px 6px',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+};
 const logStyle: CSSProperties = {
   maxHeight: 240,
   minHeight: 60,

@@ -59,6 +59,14 @@ const SERVE_STATIC = fs.existsSync(path.join(STATIC_DIR, 'index.html'));
 let currentTask = null; // string | null — the natural-language task from chat
 let assignments = {}; // { [roleName]: one-line assignment }
 let planning = false; // true while 총괄 is breaking down a command (debounce)
+// Reporting arc: agents post progress to the chat as they work, and 총괄 posts a
+// mid-progress note (after ~1 round) and a final 완료 보고 (after ~2 rounds), then
+// the team returns to idle. `taskEpoch` bumps on every new task/reset so in-flight
+// turns from a replaced task self-cancel instead of double-reporting.
+let taskEpoch = 0;
+let turnsInTask = 0; // completed agent work-turns since the current task began
+let round1Reported = false;
+let finalReported = false;
 
 if (!KEY) {
   console.warn('[gemma] OPENROUTER_API_KEY not set — using canned activities (no real Gemma).');
@@ -190,6 +198,26 @@ function send(res, msg) {
 function broadcast(msg) {
   for (const res of clients) send(res, msg);
 }
+// A line in the 총괄 채팅. `from` is the speaker's role name ('총괄', '백엔드', …);
+// the ChatPanel renders it as the message author. (Demo-only event, not AsyncAPI.)
+function chat(from, text) {
+  broadcast({ type: 'chatReply', from, text });
+}
+// Return the whole team to idle: drop the task and tell every agent to wander.
+// Bumps taskEpoch so any in-flight work turn self-cancels. Used by both the final
+// 완료 보고 and the manual "작업 초기화" button.
+function clearTask() {
+  currentTask = null;
+  assignments = {};
+  taskEpoch++;
+  turnsInTask = 0;
+  round1Reported = false;
+  finalReported = false;
+  for (const id of liveAgents) {
+    broadcast({ type: 'agentToolsClear', id });
+    broadcast({ type: 'agentStatus', id, status: 'waiting', awaitingInput: false });
+  }
+}
 
 // ── tiny static file server (only when SERVE_STATIC) ─────────────────────────
 const MIME = {
@@ -252,12 +280,15 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       let text = '';
+      let reset = false;
       try {
-        text = JSON.parse(body).text || '';
+        const b = JSON.parse(body);
+        text = b.text || '';
+        reset = b.reset === true;
       } catch {
         /* ignore malformed body */
       }
-      void handleCommand(text).then((result) => {
+      void handleCommand(text, reset).then((result) => {
         res.writeHead(200, {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
@@ -390,8 +421,15 @@ async function planTask(text) {
 }
 
 // POST /command handler: the lead acknowledges, plans, and assigns. Sets the live
-// task so the agent loops switch from idle to working on it.
-async function handleCommand(text) {
+// task so the agent loops switch from idle to working on it. `reset:true` stops the
+// current task and returns the team to idle (the "작업 초기화" button).
+async function handleCommand(text, reset) {
+  if (reset) {
+    clearTask();
+    const reply = '작업을 초기화했습니다. 팀이 대기 상태로 돌아갑니다.';
+    chat('총괄', reply);
+    return { reply, assignments: {} };
+  }
   const t = (text || '').trim().slice(0, 500); // cap untrusted input (LLM prompt + broadcast)
   if (!t) return { reply: '무엇을 할까요? 작업을 입력하세요.', assignments: {} };
   if (planning)
@@ -409,11 +447,78 @@ async function handleCommand(text) {
     const plan = await planTask(t);
     currentTask = t;
     assignments = plan.assignments || {};
-    broadcast({ type: 'chatReply', text: plan.reply });
+    // Start a fresh reporting arc for this task.
+    taskEpoch++;
+    turnsInTask = 0;
+    round1Reported = false;
+    finalReported = false;
+    chat('총괄', plan.reply);
     return plan;
   } finally {
     broadcast({ type: 'agentToolDone', id: 1, toolId });
     planning = false;
+  }
+}
+
+// 총괄 writes a short Korean report to the chat: a one-line progress note mid-way,
+// and a 2–3 sentence 완료 보고 (results) at the end. Falls back to a canned line
+// when there's no API key or the call fails.
+async function leadReport(task, phase) {
+  const fallback =
+    phase === 'final'
+      ? `"${task}" 작업 완료. 아키텍처 확정 → 백엔드 API·프론트 UI 구현 → 리뷰·테스트까지 마치고 배포 준비를 끝냈습니다.`
+      : `"${task}" 진행 중 — 아키텍처를 확정하고 백엔드·프론트를 병행 구현하며 리뷰·테스트를 동시에 돌리고 있습니다.`;
+  if (!KEY) return fallback;
+  const who = Object.entries(assignments)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(', ');
+  const ask =
+    phase === 'final'
+      ? `팀이 "${task}" 작업을 끝냈다. 무엇을 완성했는지 결과물을 한국어 2~3문장으로 보고하라.${who ? ` 담당: ${who}.` : ''}`
+      : `팀이 "${task}" 작업을 진행 중이다. 지금까지의 진행 상황을 한국어 한 문장으로 요약 보고하라.`;
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: phase === 'final' ? 220 : 90,
+        temperature: 0.6,
+        messages: [
+          {
+            role: 'system',
+            content:
+              '너는 개발팀 "총괄"이다. 사용자에게 간결한 한국어 존댓말로 보고한다. 코드펜스·따옴표 없이 평문으로만.',
+          },
+          { role: 'user', content: ask },
+        ],
+      }),
+    });
+    if (!r.ok) throw new Error(`OpenRouter ${r.status}`);
+    const out = ((await r.json()).choices?.[0]?.message?.content ?? '').trim();
+    return out || fallback;
+  } catch (e) {
+    console.warn(`[gemma] leadReport failed: ${e.message}`);
+    return fallback;
+  }
+}
+
+// Called after each completed work-turn. 총괄 reports at two milestones: once all
+// agents have worked ~1 round (progress), and again after ~2 rounds (final → idle).
+async function maybeReport(task, epoch) {
+  if (currentTask !== task || taskEpoch !== epoch) return; // task replaced meanwhile
+  if (!round1Reported && turnsInTask >= AGENTS && turnsInTask < AGENTS * 2) {
+    round1Reported = true;
+    const text = await leadReport(task, 'progress');
+    if (currentTask === task && taskEpoch === epoch) chat('총괄', text);
+  }
+  if (!finalReported && turnsInTask >= AGENTS * 2) {
+    finalReported = true;
+    const text = await leadReport(task, 'final');
+    if (taskEpoch === epoch) {
+      chat('총괄', text);
+      clearTask(); // work "done" → team returns to idle
+    }
   }
 }
 
@@ -436,10 +541,12 @@ async function runAgent(id) {
       continue;
     }
     // A work "turn" on the assigned task: 1–3 contextual activities. The
-    // `currentTask === task` guard lets a new command interrupt between activities.
+    // `currentTask === task && taskEpoch === epoch` guard lets a new command (or a
+    // reset/final report) interrupt between activities.
+    const epoch = taskEpoch;
     const assignment = assignments[role.name];
     const acts = 1 + Math.floor(Math.random() * 3);
-    for (let k = 0; k < acts && running && currentTask === task; k++) {
+    for (let k = 0; k < acts && running && currentTask === task && taskEpoch === epoch; k++) {
       const activity = await gemmaActivity(id, role, task, assignment);
       const toolId = `gemma-${id}-${++toolSeq}`;
       broadcast({
@@ -449,8 +556,16 @@ async function runAgent(id) {
         status: activity,
         toolName: toolFor(activity),
       });
+      // Real-time progress: post the turn's first activity to the chat, labelled
+      // with the role (one line per turn, so 7 agents don't flood the log).
+      if (k === 0) chat(role.name, activity);
       await sleep(rand(3500, 8000)); // "working" on it
       broadcast({ type: 'agentToolDone', id, toolId });
+    }
+    // Count a completed work-turn on this task and let 총괄 report at milestones.
+    if (currentTask === task && taskEpoch === epoch) {
+      turnsInTask++;
+      await maybeReport(task, epoch);
     }
     // Breather between turns → 'waiting' flips isActive=false so the idle-wander AI
     // takes over (neutral motions), then the agent picks the task back up.

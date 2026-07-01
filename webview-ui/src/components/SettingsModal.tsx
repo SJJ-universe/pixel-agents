@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
+import { isGemmaDemo } from '../runtime.js';
 import { transport } from '../transport/index.js';
 import { Button } from './ui/Button.js';
 import { Checkbox } from './ui/Checkbox.js';
@@ -36,60 +37,66 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [soundLocal, setSoundLocal] = useState(isSoundEnabled);
 
+  // The live Gemma demo runs in the browser with no VS Code / hooks / JSONL backend,
+  // so those settings do nothing there — hide them and keep only what works (sound).
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Settings">
-      <MenuItem
-        onClick={() => {
-          transport.send({ type: 'openSessionsFolder' });
-          onClose();
-        }}
-      >
-        Open Sessions Folder
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          transport.send({ type: 'exportLayout' });
-          onClose();
-        }}
-      >
-        Export Layout
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          transport.send({ type: 'importLayout' });
-          onClose();
-        }}
-      >
-        Import Layout
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          transport.send({ type: 'addExternalAssetDirectory' });
-          onClose();
-        }}
-      >
-        Add Asset Directory
-      </MenuItem>
-      {externalAssetDirectories.map((dir) => (
-        <div key={dir} className="flex items-center justify-between py-4 px-10 gap-8">
-          <span
-            className="text-xs text-text-muted overflow-hidden text-ellipsis whitespace-nowrap"
-            title={dir}
+    <Modal isOpen={isOpen} onClose={onClose} title={isGemmaDemo ? '설정' : 'Settings'}>
+      {!isGemmaDemo && (
+        <>
+          <MenuItem
+            onClick={() => {
+              transport.send({ type: 'openSessionsFolder' });
+              onClose();
+            }}
           >
-            {dir.split(/[/\\]/).pop() ?? dir}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => transport.send({ type: 'removeExternalAssetDirectory', path: dir })}
-            className="shrink-0"
+            Open Sessions Folder
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              transport.send({ type: 'exportLayout' });
+              onClose();
+            }}
           >
-            x
-          </Button>
-        </div>
-      ))}
+            Export Layout
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              transport.send({ type: 'importLayout' });
+              onClose();
+            }}
+          >
+            Import Layout
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              transport.send({ type: 'addExternalAssetDirectory' });
+              onClose();
+            }}
+          >
+            Add Asset Directory
+          </MenuItem>
+          {externalAssetDirectories.map((dir) => (
+            <div key={dir} className="flex items-center justify-between py-4 px-10 gap-8">
+              <span
+                className="text-xs text-text-muted overflow-hidden text-ellipsis whitespace-nowrap"
+                title={dir}
+              >
+                {dir.split(/[/\\]/).pop() ?? dir}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => transport.send({ type: 'removeExternalAssetDirectory', path: dir })}
+                className="shrink-0"
+              >
+                x
+              </Button>
+            </div>
+          ))}
+        </>
+      )}
       <Checkbox
-        label="Sound Notifications"
+        label={isGemmaDemo ? '소리 알림' : 'Sound Notifications'}
         checked={soundLocal}
         onChange={() => {
           const newVal = !isSoundEnabled();
@@ -98,22 +105,26 @@ export function SettingsModal({
           transport.send({ type: 'setSoundEnabled', enabled: newVal });
         }}
       />
-      <Checkbox
-        label="Watch All Sessions"
-        checked={watchAllSessions}
-        onChange={onToggleWatchAllSessions}
-      />
-      <Checkbox
-        label="Instant Detection (Hooks)"
-        checked={hooksEnabled}
-        onChange={onToggleHooksEnabled}
-      />
-      <Checkbox
-        label="Always Show Labels"
-        checked={alwaysShowOverlay}
-        onChange={onToggleAlwaysShowOverlay}
-      />
-      <Checkbox label="Debug View" checked={isDebugMode} onChange={onToggleDebugMode} />
+      {!isGemmaDemo && (
+        <>
+          <Checkbox
+            label="Watch All Sessions"
+            checked={watchAllSessions}
+            onChange={onToggleWatchAllSessions}
+          />
+          <Checkbox
+            label="Instant Detection (Hooks)"
+            checked={hooksEnabled}
+            onChange={onToggleHooksEnabled}
+          />
+          <Checkbox
+            label="Always Show Labels"
+            checked={alwaysShowOverlay}
+            onChange={onToggleAlwaysShowOverlay}
+          />
+          <Checkbox label="Debug View" checked={isDebugMode} onChange={onToggleDebugMode} />
+        </>
+      )}
     </Modal>
   );
 }

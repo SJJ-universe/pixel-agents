@@ -259,15 +259,16 @@ export function Office3D({
           (POST /command + SSE) exists to drive the agents from natural language. */}
       {(isGemmaDemo || import.meta.env.DEV) && <ChatPanel />}
 
-      {/* Camera-mode toggle: top-down diorama vs first-person walkthrough. */}
+      {/* Camera-mode toggle: top-down diorama vs first-person walkthrough.
+          Enlarged ~2× so it reads clearly at a glance. */}
       <div
         style={{
           position: 'absolute',
           top: 8,
           left: 8,
           display: 'flex',
-          gap: 4,
-          padding: '4px',
+          gap: 8,
+          padding: '8px',
           background: PANEL_BG,
           border: `2px solid ${PANEL_BORDER}`,
           userSelect: 'none',
@@ -319,8 +320,8 @@ const camBtnStyle: CSSProperties = {
   border: 'none',
   color: PANEL_FG,
   fontWeight: 400,
-  fontSize: 12,
-  padding: '3px 8px',
+  fontSize: 24,
+  padding: '6px 16px',
 };
 const camBtnActive: CSSProperties = { ...camBtnStyle, background: PANEL_BORDER, fontWeight: 700 };
 
