@@ -1,211 +1,129 @@
-<h1 align="center">
-    <a href="https://github.com/pixel-agents-hq/pixel-agents/discussions">
-        <img src="webview-ui/public/banner.png" alt="Pixel Agents">
-    </a>
-</h1>
-
-<h2 align="center" style="padding-bottom: 20px;">
-  The game interface where AI agents build real things
-</h2>
-
-<div align="center" style="margin-top: 25px;">
-
-[![version](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Fpablodelucca%2F3cd28398fa4a2c0a636e1d51d41aee39%2Fraw%2Fversion.json)](https://github.com/pixel-agents-hq/pixel-agents/releases)
-[![marketplaces](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Fpablodelucca%2F3cd28398fa4a2c0a636e1d51d41aee39%2Fraw%2Finstalls.json)](https://marketplace.visualstudio.com/items?itemName=pablodelucca.pixel-agents)
-[![stars](https://img.shields.io/github/stars/pixel-agents-hq/pixel-agents?logo=github&color=0183ff&style=flat)](https://github.com/pixel-agents-hq/pixel-agents/stargazers)
-[![license](https://img.shields.io/github/license/pixel-agents-hq/pixel-agents?color=0183ff&style=flat)](https://github.com/pixel-agents-hq/pixel-agents/blob/main/LICENSE)
-[![good first issues](https://img.shields.io/github/issues/pixel-agents-hq/pixel-agents/good%20first%20issue?color=7057ff&label=good%20first%20issues)](https://github.com/pixel-agents-hq/pixel-agents/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
-
-</div>
-
-<div align="center">
-<a href="https://marketplace.visualstudio.com/items?itemName=pablodelucca.pixel-agents">🛒 VS Code Marketplace</a> • <a href="https://github.com/pixel-agents-hq/pixel-agents/discussions">💬 Discussions</a> • <a href="https://github.com/pixel-agents-hq/pixel-agents/issues">🐛 Issues</a> • <a href="CONTRIBUTING.md">🤝 Contributing</a> • <a href="CHANGELOG.md">📋 Changelog</a>
-</div>
-
-<br/>
-
-Pixel Agents turns multi-agent AI systems into something you can actually see and manage. Each agent becomes a character in a pixel art office. They walk around, sit at their desk, and visually reflect what they are doing — typing when writing code, reading when searching files, waiting when it needs your attention.
-
-It ships in **two flavors from the same source tree**:
-
-- **VS Code extension** — `pablodelucca.pixel-agents` on the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pablodelucca.pixel-agents) and [Open VSX](https://open-vsx.org/extension/pablodelucca/pixel-agents). Agents spawn into VS Code terminals; characters render in the panel area.
-- **Standalone CLI** — `npx pixel-agents` runs a local Fastify server and serves the office as a browser SPA. Useful in tmux workflows, remote sessions, or any environment without a desktop VS Code.
-
-Internally, the architecture is fully agent-agnostic and platform-agnostic: a typed `HookProvider` interface defines the integration boundary so adding a new AI tool is a single subdirectory of code. Claude Code is the reference implementation today; Codex, Gemini, Cursor, and others are on the roadmap.
-
-![Pixel Agents screenshot](webview-ui/public/Screenshot.jpg)
-
-## Features
-
-- **One agent, one character** — every Claude Code terminal gets its own animated character
-- **Live activity tracking** — characters animate based on what the agent is actually doing (writing, reading, running commands)
-- **Office layout editor** — design your office with floors, walls, and furniture using a built-in editor
-- **Speech bubbles** — visual indicators when an agent is waiting for input or needs permission
-- **Sound notifications** — optional chime when an agent finishes its turn
-- **Sub-agent visualization** — Task tool sub-agents spawn as separate characters linked to their parent
-- **Persistent layouts** — your office design is saved and shared across VS Code windows
-- **External asset directories** — load custom or third-party furniture packs from any folder on your machine
-- **Diverse characters** — 6 diverse characters. These are based on the amazing work of [JIK-A-4, Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
+<h1 align="center">Pixel Agents — Live Gemma Office</h1>
 
 <p align="center">
-  <img src="webview-ui/public/characters.png" alt="Pixel Agents characters" width="320" height="72" style="image-rendering: pixelated;">
+  <img src="webview-ui/public/banner.png" alt="Pixel Agents">
 </p>
 
-## Requirements
+<h3 align="center">Watch a team of real AI agents work as animated characters in a pixel-art office — live, in your browser.</h3>
 
-- VS Code 1.105.0 or later
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and configured
-- **Platform**: Windows, Linux, and macOS are supported
+<p align="center">
+  <a href="https://gemma-pixel-office.onrender.com"><b>▶ Open the live demo →</b> gemma-pixel-office.onrender.com</a>
+</p>
 
-## Getting Started
+<p align="center">
+  <sub>Free Render instance — the <b>first load can take 30 s – 2 min</b> while it wakes from sleep (see <a href="#why-the-first-load-is-slow">below</a>). It is instant after that.</sub>
+</p>
 
-If you just want to use Pixel Agents, the easiest way is to download the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=pablodelucca.pixel-agents). If you want to play with the code, develop, or contribute, then:
+---
 
-### Install from source
+This repository is a fork of [pixel-agents](https://github.com/pixel-agents-hq/pixel-agents) that adds a **deployed, self-driving multi-agent office**: seven Gemma agents (a lead plus six specialists) spun up on a server, streaming their activity into the pixel office over Server-Sent Events. It also adds a **3D renderer** so the same office can be viewed as animated 3D characters instead of pixel sprites.
+
+The base project turns any multi-agent AI system into something you can _see_: each agent becomes a character that walks around, sits at a desk, and animates to reflect what it is actually doing — typing when it writes code, reading when it searches files, waiting when it needs your attention. This fork makes that watchable by anyone, with no install, at the link above.
+
+<p align="center">
+  <img src="webview-ui/public/Screenshot.jpg" alt="Pixel Agents office" width="720">
+</p>
+
+## What this fork adds
+
+- **A live, hosted office** — a single Node service serves the built office _and_ streams live agent events from the same origin. One URL, no setup, nothing to install.
+- **Real Gemma agents driving it** — a separate runner talks to `google/gemma-4-26b-a4b-it` via OpenRouter and emits office events (agent created, tool started/finished, waiting, chat reply). The office app itself **never calls an LLM** — it only visualizes events, so the runner is fully swappable.
+- **A "총괄" (lead) chat** — type a task to the lead agent and watch it plan, delegate to the specialists, and drive them through the work in real time.
+- **Idle vs. working labels** — every character is always tagged `name · status`: the live activity while busy, or **`쉬는중` (resting)** while idle — so you can read who is who and who is working at a glance.
+- **A 3D office renderer** — toggle from pixel sprites to animated 3D Mixamo characters (react-three-fiber), with head-mounted speech bubbles and floor-grounded animation.
+
+## The seven agents
+
+| Role                  | Character                       |                                          |
+| --------------------- | ------------------------------- | ---------------------------------------- |
+| 총괄 (Lead)           | seated, always at the head desk | plans and delegates; driven by your chat |
+| 아키텍트 (Architect)  | mobile                          | design / structure work                  |
+| 백엔드 (Backend)      | mobile                          | server & data work                       |
+| 프론트엔드 (Frontend) | mobile                          | UI work                                  |
+| 리뷰어 (Reviewer)     | mobile                          | reviews output                           |
+| 테스터 (Tester)       | mobile                          | verifies                                 |
+| 데브옵스 (DevOps)     | seated                          | build / deploy                           |
+
+Idle agents wander or rest at a desk; when the lead assigns work, they walk to a seat and animate for the tool they are "running".
+
+## Why the first load is slow
+
+The demo runs on Render's **free tier**, which **spins the service down after ~15 minutes of no traffic**. The next visit has to cold-start the Node process and stream the first batch of events, so the initial page can take roughly **30 seconds to 2 minutes**. This is expected free-tier behavior, not a bug — once it is warm, it stays instant until it goes idle again. (Upgrading the Render plan or adding an external pinger keeps it always-on.)
+
+## How the live office works
+
+```
+Your browser  ──GET /──────────────►  built office SPA (dist/webview)
+              ◄─SSE /events─────────  live agent events (same origin, no CORS)
+              ──POST /command───────►  the 총괄 chat: assign a task to the lead
+
+Server (scripts/gemma-agents/runner.mjs, Node stdlib only)
+    │  serves the SPA + streams events + relays the lead's plan
+    └──HTTPS──►  OpenRouter  ──►  google/gemma-4-26b-a4b-it
+```
+
+Key design points:
+
+- **One service, one origin.** The runner serves the SPA and the `/events` stream from the same host, so there is no second server and no CORS. `/health` is the liveness endpoint.
+- **The office never sees the API key.** `OPENROUTER_API_KEY` lives only in the server process (a Render secret, `sync: false`). The browser only receives already-rendered office events.
+- **The app is LLM-agnostic.** The office consumes a small, typed stream of events. The Gemma runner is just one producer — the built-in browser mock or any other driver can replace it without touching the UI.
+- **Safe by construction.** The deployed runner is the visual/activity driver only. The separate code-editing harness that can run shell commands is intentionally **not** exposed on the public deploy.
+
+## Run it yourself
 
 ```bash
-git clone https://github.com/pixel-agents-hq/pixel-agents.git
+git clone https://github.com/SJJ-universe/pixel-agents.git
 cd pixel-agents
-npm install      # npm workspaces installs root + server + webview-ui in one shot
-npm run build
+npm install            # npm workspaces installs root + server + webview in one shot
 ```
 
-Then press **F5** in VS Code to launch the Extension Development Host.
-
-To try the **standalone CLI** locally:
+Set your OpenRouter key (server-side only — never commit it):
 
 ```bash
-node dist/cli.js                 # or npx pixel-agents [--port 3100] after publish
+export OPENROUTER_API_KEY=sk-or-...        # Windows PowerShell: $env:OPENROUTER_API_KEY="sk-or-..."
 ```
 
-It starts the Fastify server, opens the webview SPA at `http://localhost:3100`, and (in the same `~/.pixel-agents/` namespace) shares your hooks and layout with the VS Code extension if both are running.
-
-### Browser Preview & Hosted Reports
-
-The browser-preview version of the webview can be built and staged for Vercel separately from the VS Code extension build.
+**Production-like (what the live site runs):** build the office with the demo flag, then start the runner, then open the port it prints (default `7777`):
 
 ```bash
-npm run test
-npm run e2e
-npm run e2e -- --attach-videos-on-success
-npm run vercel:prepare
+VITE_GEMMA_DEMO=1 npm run build:gemma-demo   # builds the SPA with the same-origin SSE bridge
+node scripts/gemma-agents/runner.mjs         # serves office + /events on http://127.0.0.1:7777
 ```
 
-Run `npm run test:report` separately when you want the combined Allure report locally without preparing the full Vercel output.
+**Dev with hot reload:** run the Vite dev server and the runner together, then open `http://localhost:5173` and toggle 3D:
 
-The staged Vercel output serves the standalone webview at `/webview/` and the Linux Allure report at `/reports/allure/`, combining the `e2e`, `server`, and `webview` suites. The GitHub Actions deploy job expects `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets.
+```bash
+npm run gemma:dev        # Vite dev server + Gemma runner in parallel
+```
 
-### Usage
+Environment knobs the runner reads: `OPENROUTER_API_KEY`, `GEMMA_MODEL` (default `google/gemma-4-26b-a4b-it`), `AGENTS` (default `7`), `PORT` (default `7777`), `HOST` (default `127.0.0.1`).
 
-1. Open the **Pixel Agents** panel (it appears in the bottom panel area alongside your terminal)
-2. Click **+ Agent** to spawn a new Claude Code terminal and its character. Right-click for the option to launch with `--dangerously-skip-permissions` (bypasses all tool approval prompts)
-3. Start coding with Claude — watch the character react in real time
-4. Click a character to select it, then click a seat to reassign it
-5. Click **Layout** to open the office editor and customize your space
+## Deploy your own
 
-## Layout Editor
+This repo ships a [Render Blueprint](render.yaml). In the Render dashboard: **New → Blueprint → pick this repo**. Render reads `render.yaml`, then asks you to fill in the single secret, `OPENROUTER_API_KEY`. It builds with `VITE_GEMMA_DEMO=1 npm run build:gemma-demo` and starts `node scripts/gemma-agents/runner.mjs`. `autoDeploy` is on, so every push to the connected branch redeploys.
 
-The built-in editor lets you design your office:
+## Architecture (base project)
 
-- **Floor** — Full HSB color control
-- **Walls** — Auto-tiling walls with color customization
-- **Tools** — Select, paint, erase, place, eyedropper, pick
-- **Undo/Redo** — 50 levels with Ctrl+Z / Ctrl+Y
-- **Export/Import** — Share layouts as JSON files via the Settings modal
+A four-package monorepo with strict layering (`core` depends on nothing; `server` and `webview-ui` depend only on `core`; the VS Code adapter composes `core` + `server`):
 
-The grid is expandable up to 64×64 tiles. Click the ghost border outside the current grid to grow it.
+- **`core/`** — protocol + interfaces. An [AsyncAPI 3.0](core/asyncapi.yaml) contract is the single source of truth for the wire messages; the TypeScript bindings are generated from it and drift-checked in CI. Defines `HookProvider` (the integration boundary for any AI tool) and `MessageTransport`.
+- **`server/`** — Fastify HTTP/WebSocket server and the shared `AgentRuntime` + `AgentStateStore`. Also ships the `npx pixel-agents` standalone CLI.
+- **`adapters/vscode/`** — the VS Code extension surface.
+- **`webview-ui/`** — the React 19 office. A Canvas 2D pixel renderer and a react-three-fiber **3D renderer** (`webview-ui/src/office3d/`) read from an imperative `OfficeState` game world. One `createTransport()` call is the only place that branches between the VS Code (`postMessage`) and browser (`WebSocket`/SSE) transports.
 
-### Office Assets
+Adding a new AI tool is a single subdirectory under `server/src/providers/hook/<id>/`. Claude Code is the reference provider; this fork's Gemma runner is a standalone driver that speaks the same office-event shape.
 
-All office assets (furniture, floors, walls) are now **fully open-source** and included in this repository under `webview-ui/public/assets/`. No external purchases or imports are needed — everything works out of the box.
+## Tech stack
 
-Each furniture item lives in its own folder under `assets/furniture/` with a `manifest.json` that declares its sprites, rotation groups, state groups (on/off), and animation frames. Floor tiles are individual PNGs in `assets/floors/`, and wall tile sets are in `assets/walls/`. This modular structure makes it easy to add, remove, or modify assets without touching any code.
+React 19 · Vite · Canvas 2D · [react-three-fiber](https://github.com/pmndrs/react-three-fiber) + three.js (3D) · Fastify v5 · TypeScript (strict, `erasableSyntaxOnly`) · Vitest + Playwright · Node stdlib runner · OpenRouter (Gemma).
 
-To add a new furniture item, create a folder in `webview-ui/public/assets/furniture/` with your PNG sprite(s) and a `manifest.json`, then rebuild. The asset manager (`scripts/asset-manager.html`) provides a visual editor for creating and editing manifests.
+## Credits
 
-To use furniture from an external directory, open Settings → **Add Asset Directory**. See [docs/external-assets.md](docs/external-assets.md) for the full manifest format and how to use third-party asset packs.
-
-Characters are based on the amazing work of [JIK-A-4, Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
-
-## How It Works
-
-Pixel Agents has two parallel detection paths:
-
-- **Hooks mode** (preferred) — Claude Code's official Hooks API POSTs events (`SessionStart`, `PreToolUse`, `Notification`, `Stop`, etc.) to a local Fastify server (`POST /api/hooks/:providerId`). Instant, reliable. Server discovery via `~/.pixel-agents/server.json`.
-- **Heuristic mode** (fallback) — Polls JSONL transcript files at `~/.claude/projects/<project-hash>/<session-id>.jsonl`. Used when hooks aren't installed.
-
-A single `HookProvider.normalizeHookEvent(raw)` translates each CLI's hook payload into a canonical `AgentEvent`. The shared `AgentRuntime` dispatches on `AgentEvent.kind`, mutates `AgentStateStore`, and the broadcast layer translates state events into typed `ServerMessage` over the active transport.
-
-The webview runs a lightweight game loop with canvas rendering, BFS pathfinding, and a character state machine (idle → walk → type/read). Everything is pixel-perfect at integer zoom levels. Game state lives in an imperative `OfficeState` class outside React; React components read from it during render but don't own the state.
-
-No modifications to Claude Code are needed — Pixel Agents is purely observational.
-
-## Tech Stack
-
-Four-package monorepo, npm workspaces:
-
-- **`core/`** — TypeScript-only protocol + interfaces (AsyncAPI 3.0 contract, `HookProvider`, `MessageTransport`, `StateAdapter`). Zero runtime side effects.
-- **`server/`** — Fastify v5 (HTTP + WebSocket), Vitest. Owns `AgentRuntime`, `AgentStateStore`, `SessionRouter`, `DismissalTracker`, file watching, transcript parsing, providers. Ships the `npx pixel-agents` CLI.
-- **`adapters/vscode/`** — VS Code Extension API. Composes `core/` + `server/` for the desktop surface.
-- **`webview-ui/`** — React 19, Vite, Canvas 2D. Transport-agnostic (`PostMessageTransport` in VS Code, `WebSocketTransport` in the browser).
-
-Builds: esbuild (extension + CLI + hook scripts), Vite (webview SPA). Tests: Vitest (server + webview unit), Playwright (e2e against real VS Code + standalone Fastify).
-
-## Known Limitations
-
-- **Agent-terminal sync** — the way agents are connected to Claude Code terminal instances is not super robust and sometimes desyncs, especially when terminals are rapidly opened/closed or restored across sessions.
-- **Heuristic-based status detection** — Claude Code's JSONL transcript format does not provide clear signals for when an agent is waiting for user input or when it has finished its turn. The current detection is based on heuristics (idle timers, turn-duration events) and often misfires — agents may briefly show the wrong status or miss transitions.
-- **Linux/macOS tip** — if you launch VS Code without a folder open (e.g. bare `code` command), agents will start in your home directory. This is fully supported; just be aware your Claude sessions will be tracked under `~/.claude/projects/` using your home directory as the project root.
-
-## Troubleshooting
-
-If your agent appears stuck on idle or doesn't spawn:
-
-1. **Debug View** — In the Pixel Agents panel, click the gear icon (Settings), then toggle **Debug View**. This shows connection diagnostics per agent: JSONL file status, lines parsed, last data timestamp, and file path. If you see "JSONL not found", the extension can't locate the session file.
-2. **Debug Console** — If you're running from source (Extension Development Host via F5), open VS Code's **View > Debug Console**. Search for `[Pixel Agents]` to see detailed logs: project directory resolution, JSONL polling status, path encoding mismatches, and unrecognized JSONL record types.
-
-## Where This Is Going
-
-The long-term vision is an interface where managing AI agents feels like playing the Sims, but the results are real things built.
-
-- **Agents as characters** you can see, assign, monitor, and redirect, each with visible roles (designer, coder, writer, reviewer), stats, context usage, and tools.
-- **Desks as directories** — drag an agent to a desk to assign it to a project or working directory.
-- **An office as a project** — with a Kanban board on the wall where idle agents can pick up tasks autonomously.
-- **Deep inspection** — click any agent to see its model, branch, system prompt, and full work history. Interrupt it, chat with it, or redirect it.
-- **Token health bars** — rate limits and context windows visualized as in-game stats.
-- **Fully customizable** — upload your own character sprites, themes, and office assets. Eventually maybe even move beyond pixel art into 3D or VR.
-
-For this to work, the architecture needs to be modular at every level:
-
-- **Platform-agnostic**: VS Code extension today, Electron app, web app, or any other host environment tomorrow.
-- **Agent-agnostic**: Claude Code today, but built to support Codex, OpenCode, Gemini, Cursor, Copilot, and others through composable adapters.
-- **Theme-agnostic**: community-created assets, skins, and themes from any contributor.
-
-We're actively working on the core module and adapter architecture that makes this possible. If you're interested to talk about this further, please visit our [Discussions Section](https://github.com/pixel-agents-hq/pixel-agents/discussions).
-
-## Community & Contributing
-
-Use **[Issues](https://github.com/pixel-agents-hq/pixel-agents/issues)** to report bugs or request features. Join **[Discussions](https://github.com/pixel-agents-hq/pixel-agents/discussions)** for questions and conversations.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to contribute.
-
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
-
-## Supporting the Project
-
-If you find Pixel Agents useful, consider supporting its development:
-
-<a href="https://github.com/sponsors/pablodelucca">
-  <img src="https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=github" alt="GitHub Sponsors">
-</a>
-<a href="https://ko-fi.com/pablodelucca">
-  <img src="https://img.shields.io/badge/Support-Ko--fi-ff5e5b?logo=ko-fi" alt="Ko-fi">
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=pixel-agents-hq/pixel-agents&type=Date)](https://www.star-history.com/?repos=pixel-agents-hq%2Fpixel-agents&type=date&legend=bottom-right)
+- Built on **[pixel-agents](https://github.com/pixel-agents-hq/pixel-agents)** by [pablodelucca](https://github.com/sponsors/pablodelucca) — please support the upstream project.
+- Pixel characters based on [JIK-A-4, Metro City](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack).
+- 3D characters are [Mixamo](https://www.mixamo.com/) models, converted to GLB.
+- Gemma models by Google, served via [OpenRouter](https://openrouter.ai/).
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT — same as upstream. See [LICENSE](LICENSE).
