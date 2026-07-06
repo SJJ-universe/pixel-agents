@@ -16,7 +16,7 @@
     "@react-three/fiber": "^9.6.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "three": "^0.184.0"
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -25,7 +25,7 @@
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@types/three": "^0.184.1",
+    "@types/three": "^0.185.0",
     "@vitejs/plugin-react": "^6.0.1",
     "allure-vitest": "^3.9.0",
     "eslint": "^9.39.1",
